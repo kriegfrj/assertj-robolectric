@@ -21,12 +21,15 @@ import javax.lang.model.util.SimpleAnnotationValueVisitor6;
 import javax.lang.model.util.Types;
 import javax.tools.JavaFileObject;
 
-import org.assertj.robolectric.api.pkg2.ShadowAClass2Assert;
-
-import com.google.common.base.Strings;
+import org.apache.velocity.Template;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.VelocityEngine;
+import org.apache.velocity.runtime.RuntimeConstants;
+import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +50,11 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
   private Elements elements;
   private Types types;
   private TypeElement IMPLEMENTS;
+  private VelocityEngine ve = new VelocityEngine();
+  private Template abstractAssertTemplate;
+  private Template assertTemplate;
+  private Template assertionsTemplate;
+  
   //  boolean generated = false;
 
   /**
@@ -62,7 +70,12 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
     filer = environment.getFiler();
     elements = environment.getElementUtils();
     types = environment.getTypeUtils();
-
+    ve.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath"); 
+    ve.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+    ve.init();
+    abstractAssertTemplate = ve.getTemplate("abstract_assert.vm");
+    assertTemplate = ve.getTemplate("assert.vm");
+    assertionsTemplate = ve.getTemplate("assertions.vm");
     IMPLEMENTS = elements.getTypeElement("org.robolectric.annotation.Implements");
   }
 
@@ -148,133 +161,89 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
     return type;
   }
   
+  private void mergeTemplate(Template template, VelocityContext c, String clazz) {
+    Writer writer = null;
+    try {
+      writer = filer.createSourceFile(clazz).openWriter();
+      template.merge(c, writer);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      if (writer != null) {
+        try {
+          writer.close();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+  
+  boolean generated = false;
   
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    if (generated) {
+      return false;
+    }
     List<TypeElement> shadows = typesIn(elements.getPackageElement("org.robolectric.shadows").getEnclosedElements());
     Map<TypeMirror,TypeElement> solids = new HashMap<>();
-    for (TypeElement shadow: shadows) {
+    for (TypeElement shadow : shadows) {
       TypeMirror implemented = getImplementedClass(getImplementsMirror(shadow));
       if (implemented != null) {
         solids.put(implemented, shadow);
-        PrintWriter writer = null;
-        try {
-          Element impType = types.asElement(implemented);
-          String solidClass = impType.getSimpleName().toString();
-          String androidPkg = impType.getEnclosingElement().toString();
-          String assertPkg = androidPkg.replace("android", "org.assertj.robolectric.api");
-          String androidAssertPkg = assertPkg.replace("robolectric", "android");
-          String assertClass = solidClass + "Assert";
-          String assertClassFQ = assertPkg + '.' + assertClass;
-          String androidAssertClassFQ = androidAssertPkg + '.' + assertClass;
-          String shadowAssertClass = "Shadow" + assertClass;
-          String shadowAssertClassFQ = assertPkg + '.' + shadowAssertClass;
-          
-          Element shadowAssert = elements.getTypeElement(shadowAssertClassFQ);
-          if (shadowAssert == null) {
-            continue;
-          }
-          String abstractAssertClass = "Abstract" + assertClass;
-          String abstractAssertClassFQ = assertPkg + '.' + abstractAssertClass;
+        VelocityContext c = new VelocityContext();
+        Element impType = types.asElement(implemented);
+        String solidClass = impType.getSimpleName().toString();
+        String androidPkg = impType.getEnclosingElement().toString();
+        String assertPkg = androidPkg.replace("android", "org.assertj.robolectric.api");
+        String assertClass = solidClass + "Assert";
+        String assertClassFQ = assertPkg + '.' + assertClass;
 
-          JavaFileObject jfo = filer.createSourceFile(abstractAssertClassFQ);
-          writer = new PrintWriter(jfo.openWriter());
-          writer.println("package " + assertPkg + ';');
-          writer.println("import " + impType + ';');
-          writer.println("import org.assertj.core.api.AbstractAssert;");
-          writer.println("import " + shadowAssertClassFQ + ';');
-          writer.println("public abstract class " + abstractAssertClass + '<');
-          writer.println("   M extends " + abstractAssertClass + "<M,A,AA,SA>,");
-          writer.println("   A extends " + solidClass + ',');
-          writer.println("   AA extends " + androidAssertClassFQ + ',');
-          writer.println("   SA extends " + shadowAssertClass + "> extends AbstractAssert<M,A> {");
-          writer.println();
-          writer.println("    protected AA actualAssert;");
-          writer.println("    protected SA shadowAssert;");
-          writer.println();
-          String padding = Strings.repeat(" ", abstractAssertClass.length());
-          writer.println("  public " + abstractAssertClass + "(A actual,");
-          writer.println("         " + padding + " AA actualAssert,");
-          writer.println("         " + padding + " SA shadowAssert,");
-          writer.println("         " + padding + " Class<M> selfType) {");
-          writer.println("    super(actual, selfType);");
-          writer.println("    this.actualAssert = actualAssert;");
-          writer.println("    this.shadowAssert = shadowAssert;");
-          writer.println("  }");
-          writer.println("}");
-          writer.close();
-          writer = null;
-          
-          jfo = filer.createSourceFile(assertClassFQ);
-          writer = new PrintWriter(jfo.openWriter());
-          writer.println("package " + assertPkg + ';');
-          writer.println("import static org.robolectric.Shadows.shadowOf;");
-          writer.println("import " + impType + ';');
-          writer.println("import " + shadowAssertClassFQ + ';');
-          writer.println("public class " + assertClass + " extends " + abstractAssertClass + "<");
-          writer.println(assertClass + ',' + solidClass + ',' + androidAssertClassFQ + ',' + shadowAssertClass + "> {");
-          writer.println("  public " + assertClass + '(' + impType.getSimpleName() + " actual) {");
-          writer.println("    super(actual,");
-          writer.println("          new " + androidAssertClassFQ + "(actual),");
-          writer.println("          new " + shadowAssertClass + "(shadowOf(actual)),");
-          writer.println("          " + assertClass + ".class);");
-          writer.println("  }");
-          writer.println("}");
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        } finally {
-          if (writer != null) {
-            writer.close();
-          }
+        String shadowAssertClass = "Shadow" + assertClass;
+        String shadowAssertClassFQ = assertPkg + '.' + shadowAssertClass;
+        Element shadowAssert = elements.getTypeElement(shadowAssertClassFQ);
+        if (shadowAssert == null) {
+          continue;
         }
+
+        String androidAssertPkg = assertPkg.replace("robolectric", "android");
+        String androidAssertClassFQ = androidAssertPkg + '.' + assertClass;
+        String abstractAssertClass = "Abstract" + assertClass;
+        String abstractAssertClassFQ = assertPkg + '.' + abstractAssertClass;
+
+        c.put("solidClass", solidClass);
+        c.put("solidClassFQ", impType);
+        c.put("androidPkg", androidPkg);
+        c.put("assertPkg", assertPkg);
+        c.put("androidAssertPkg", androidAssertPkg);
+        c.put("assertClass", assertClass);
+        c.put("assertClassFQ", assertClassFQ);
+        c.put("androidAssertClassFQ", androidAssertClassFQ);
+        c.put("shadowAssertClass", shadowAssertClass);
+        c.put("shadowAssertClassFQ", shadowAssertClassFQ);
+        c.put("abstractAssertClass", abstractAssertClass);
+        c.put("abstractAssertClassFQ", abstractAssertClassFQ);
+
+        mergeTemplate(abstractAssertTemplate, c, abstractAssertClassFQ);
+        mergeTemplate(assertTemplate, c, assertClassFQ);
       }
     }
     
     String assertionsClassPackage = "org.assertj.robolectric.api";
     String assertionsClassName = assertionsClassPackage + ".Assertions";
-    PrintWriter writer = null;
-    try {
-      JavaFileObject jfo = filer.createSourceFile(assertionsClassName);
-      writer = new PrintWriter(jfo.openWriter());
-      writer.println("package " + assertionsClassPackage + ";");
-      writer.println("public final class Assertions {");
-
-      TypeElement assertionsElement = elements.getTypeElement("org.assertj.android.api.Assertions");
-      for (ExecutableElement m: methodsIn(assertionsElement.getEnclosedElements())) {
-        TypeMirror actual = m.getParameters().get(0).asType();
-        TypeElement shadow = solids.get(actual);
-        String returnType = m.getReturnType().toString();
-        if (shadow != null) {
-          String roboReturn = returnType.replace("assertj.android", "assertj.robolectric");
-          String shadowReturn = roboReturn.replaceFirst("(api[.].*[.])([^.]*$)", "$1Shadow$2");
-          TypeElement shadowAssert = elements.getTypeElement(shadowReturn);
-          System.err.println("Looking for type: " + shadowAssert + ", " + shadowReturn);
-          if (shadowAssert != null) {
-            returnType = roboReturn;
-            writer.println("  public static " + shadowReturn + " assertThat(" + shadow + " actual) {");
-            writer.println("    return new " + shadowReturn + "(actual);");
-            writer.println("  }");
-            writer.println();
-          }
-        }
-
-        writer.println("  public static " + returnType + " assertThat(" + actual + " actual) {");
-        writer.println("    return new " + returnType + "(actual);");
-        writer.println("  }");
-        writer.println();
-      }
-      
-      writer.println("  private Assertions() {");
-      writer.println("    throw new AssertionError(\"No instances.\");");
-      writer.println("  }");
-      writer.println("}");
-    } catch (IOException e) {
-      
-    } finally {
-      if (writer != null) {
-        writer.close();
-      }
+    
+    TypeElement assertionsElement = elements.getTypeElement("org.assertj.android.api.Assertions");
+    if (assertionsElement == null) {
+      throw new RuntimeException("Couldn't find org.assertj.android.api.Assertions");
     }
+    
+    VelocityContext c = new VelocityContext();
+    c.put("solids", solids);
+    c.put("methods", methodsIn(assertionsElement.getEnclosedElements()));
+    c.put("elements",  elements);
+    mergeTemplate(assertionsTemplate, c, assertionsClassName);
+    generated = true;
     return false;
   }
 

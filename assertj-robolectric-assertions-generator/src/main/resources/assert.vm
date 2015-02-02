@@ -1,0 +1,17 @@
+package $assertPkg;
+import static org.robolectric.Shadows.shadowOf;
+import $solidClassFQ;
+import $shadowAssertClassFQ;
+public class $assertClass extends $abstractAssertClass<
+  $assertClass,
+  $solidClass,
+  $androidAssertClassFQ,
+  $shadowAssertClass> {
+
+  public $assertClass($solidClass actual) {
+    super(actual,
+          new $androidAssertClassFQ(actual),
+          new $shadowAssertClass(shadowOf(actual)),
+          ${assertClass}.class);
+  }
+}

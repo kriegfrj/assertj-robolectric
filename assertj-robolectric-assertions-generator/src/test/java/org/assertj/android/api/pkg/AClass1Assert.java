@@ -1,8 +1,12 @@
 package org.assertj.android.api.pkg;
 
-public class AClass1Assert {
+import org.assertj.core.api.AbstractAssert;
 
-  public AClass1Assert(android.pkg.AClass1 actual) {}
+public class AClass1Assert extends AbstractAssert<AClass1Assert,android.pkg.AClass1> {
+
+  public AClass1Assert(android.pkg.AClass1 actual) {
+    super(actual, AClass1Assert.class);
+  }
   
   public AClass1Assert hasProperty(int property) {
     return this;

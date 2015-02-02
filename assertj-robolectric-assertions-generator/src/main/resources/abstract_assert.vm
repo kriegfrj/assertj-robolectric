@@ -1,0 +1,41 @@
+package $assertPkg;
+import $solidClassFQ;
+import org.assertj.core.api.AbstractAssert;
+import org.assertj.core.description.Description;
+import $shadowAssertClassFQ;
+public abstract class $abstractAssertClass <
+  S extends $abstractAssertClass<S,A,AA,SA>,
+  A extends $solidClass,
+  AA extends $androidAssertClassFQ,
+  SA extends $shadowAssertClass> extends AbstractAssert<S,A> {
+
+  protected AA actualAssert;
+  protected SA shadowAssert;
+
+  public $abstractAssertClass(A actual,
+          AA actualAssert,
+          SA shadowAssert,
+          Class<S> selfType) {
+    super(actual, selfType);
+    this.actualAssert = actualAssert;
+    this.shadowAssert = shadowAssert;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public S describedAs(String description, Object... args) {
+    super.describedAs(description, args);
+    actualAssert.describedAs(description, args);
+    shadowAssert.describedAs(description, args);
+    return myself;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public S describedAs(Description description) {
+    super.describedAs(description);
+    actualAssert.describedAs(description);
+    shadowAssert.describedAs(description);
+    return myself;
+  }
+}
