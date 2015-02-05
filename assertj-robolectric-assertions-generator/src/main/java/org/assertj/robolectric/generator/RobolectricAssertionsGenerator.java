@@ -13,13 +13,13 @@ import javax.lang.model.element.AnnotationValueVisitor;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.SimpleElementVisitor6;
 import javax.lang.model.util.SimpleAnnotationValueVisitor6;
 import javax.lang.model.util.Types;
-import javax.tools.JavaFileObject;
 
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
@@ -27,9 +27,12 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -202,16 +205,26 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
 
         String shadowAssertClass = "Shadow" + assertClass;
         String shadowAssertClassFQ = assertPkg + '.' + shadowAssertClass;
-        Element shadowAssert = elements.getTypeElement(shadowAssertClassFQ);
+        String abstractShadowAssertClass = "Abstract" + shadowAssertClass;
+        String abstractShadowAssertClassFQ = assertPkg + '.' + abstractShadowAssertClass;
+        TypeElement shadowAssert = elements.getTypeElement(shadowAssertClassFQ);
         if (shadowAssert == null) {
           continue;
         }
-
         String androidAssertPkg = assertPkg.replace("robolectric", "android");
         String androidAssertClassFQ = androidAssertPkg + '.' + assertClass;
+        String abstractAndroidAssertClassFQ = androidAssertPkg + ".Abstract" + assertClass;
+
+        TypeElement actualAssert = elements.getTypeElement(androidAssertClassFQ);
+        if (actualAssert == null) {
+          throw new RuntimeException("Couldn't find actual assert class: " + androidAssertClassFQ);
+        }
+        
+
         String abstractAssertClass = "Abstract" + assertClass;
         String abstractAssertClassFQ = assertPkg + '.' + abstractAssertClass;
 
+        c.put("shadow", shadow);
         c.put("solidClass", solidClass);
         c.put("solidClassFQ", impType);
         c.put("androidPkg", androidPkg);
@@ -220,12 +233,54 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
         c.put("assertClass", assertClass);
         c.put("assertClassFQ", assertClassFQ);
         c.put("androidAssertClassFQ", androidAssertClassFQ);
+        c.put("abstractAndroidAssertClassFQ", abstractAndroidAssertClassFQ);
         c.put("shadowAssertClass", shadowAssertClass);
         c.put("shadowAssertClassFQ", shadowAssertClassFQ);
         c.put("abstractAssertClass", abstractAssertClass);
         c.put("abstractAssertClassFQ", abstractAssertClassFQ);
+        c.put("abstractShadowAssertClass", abstractShadowAssertClass);
+        c.put("abstractShadowAssertClassFQ", abstractShadowAssertClassFQ);
 
-        mergeTemplate(abstractAssertTemplate, c, abstractAssertClassFQ);
+        TypeElement actualSuper = (TypeElement)types.asElement(actualAssert.getSuperclass());
+        TypeElement shadowSuper = (TypeElement)types.asElement(shadowAssert.getSuperclass());
+        
+        c.put("actualSuperElement", actualSuper);
+        c.put("shadowSuperElement", shadowSuper);
+        
+        Predicate<ExecutableElement> isPublicInstance = new Predicate<ExecutableElement>() {
+
+          @Override
+          public boolean apply(ExecutableElement input) {
+            Set<Modifier> modifiers = input.getModifiers();
+            return modifiers.contains(Modifier.PUBLIC) && !modifiers.contains(Modifier.STATIC);
+          }
+          
+        };
+        List<ExecutableElement> methods = new ArrayList<>();
+        Iterables.addAll(methods, Iterables.filter(methodsIn(actualAssert.getEnclosedElements()), isPublicInstance));
+        boolean buildAbstract = false;
+        if (actualSuper.toString().equals(abstractAndroidAssertClassFQ)) {
+          Iterables.addAll(methods, Iterables.filter(methodsIn(actualSuper.getEnclosedElements()), isPublicInstance));
+          buildAbstract = true;
+        }
+        c.put("actualMethods", methods);
+        methods = new ArrayList<>();
+        Iterables.addAll(methods, Iterables.filter(methodsIn(shadowAssert.getEnclosedElements()),isPublicInstance));
+        if (shadowSuper.toString().equals(abstractShadowAssertClassFQ)) {
+          Iterables.addAll(methods, Iterables.filter(methodsIn(shadowSuper.getEnclosedElements()), isPublicInstance));
+          buildAbstract = true;
+        }
+        c.put("shadowMethods", methods);
+        c.put("buildAbstract", buildAbstract);
+        
+        if (buildAbstract) {
+          mergeTemplate(abstractAssertTemplate, c, abstractAssertClassFQ);
+          c.put("assertSuperClass", abstractAssertClass);
+        } else if (actualSuper.toString().equals("org.assertj.core.api.AbstractAssert")) {
+          c.put("assertSuperClass", "org.assertj.robolectric.api.AbstractRobolectricAssert");
+        } else {
+          c.put("assertSuperClass", actualSuper.toString().replace("android", "robolectric"));
+        }
         mergeTemplate(assertTemplate, c, assertClassFQ);
       }
     }

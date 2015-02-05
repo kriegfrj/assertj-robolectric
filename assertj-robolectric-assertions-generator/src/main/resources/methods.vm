@@ -1,0 +1,14 @@
+#foreach( $m in $actualMethods )
+#set( $mname = $m.getSimpleName() )
+  public $rettype $mname(#set( $first = 0 )#foreach( $p in $m.getParameters() )#if( !$first ), #set( $first = 1 )#end$p.asType() $p.getSimpleName()#end) {
+	actualAssert.$mname(#set( $first = 0 )#foreach( $p in $m.getParameters() )#if( !$first ), #set( $first = 1 )#end$p.getSimpleName()#end);
+    return #if( $rettype == "S" )myself#{else}this#end;
+  }
+#end
+#foreach( $m in $shadowMethods )
+#set( $mname = $m.getSimpleName() )
+  public $rettype $mname(#set( $first = 0 )#foreach( $p in $m.getParameters() )#if( !$first ), #set( $first = 1 )#end$p.asType() $p.getSimpleName()#end) {
+	shadowAssert.$mname(#set( $first = 0 )#foreach( $p in $m.getParameters() )#if( !$first ), #set( $first = 1 )#end$p.getSimpleName()#end);
+    return #if( $rettype == "S" )myself#{else}this#end;
+  }
+#end

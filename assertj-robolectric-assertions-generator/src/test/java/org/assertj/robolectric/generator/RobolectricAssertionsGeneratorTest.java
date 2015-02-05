@@ -17,7 +17,9 @@ public class RobolectricAssertionsGeneratorTest {
       .and().generatesSources(
           forResource("expected/org/assertj/robolectric/api/Assertions.java"),
           forResource("expected/org/assertj/robolectric/api/pkg2/AClass2Assert.java"),
-          forResource("expected/org/assertj/robolectric/api/pkg2/AbstractAClass2Assert.java")
+          forResource("expected/org/assertj/robolectric/api/pkg2/AClass3Assert.java"),
+          forResource("expected/org/assertj/robolectric/api/pkg2/AbstractAClass3Assert.java"),
+          forResource("expected/org/assertj/robolectric/api/pkg2/ASubclass3Assert.java")
           );
   }
 }

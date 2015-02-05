@@ -10,4 +10,11 @@ public class ShadowAClass2Assert
     super(actual, ShadowAClass2Assert.class);
   }
   
+  public ShadowAClass2Assert hasShadowProperty(int something) {
+    return this;
+  }
+
+  protected ShadowAClass2Assert protectedMethodsShouldBeIgnored(String things) {
+    return this;
+  }
 }

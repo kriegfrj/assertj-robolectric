@@ -2,7 +2,7 @@ package $assertPkg;
 import static org.robolectric.Shadows.shadowOf;
 import $solidClassFQ;
 import $shadowAssertClassFQ;
-public class $assertClass extends $abstractAssertClass<
+public class $assertClass extends $assertSuperClass<
   $assertClass,
   $solidClass,
   $androidAssertClassFQ,
@@ -14,4 +14,9 @@ public class $assertClass extends $abstractAssertClass<
           new $shadowAssertClass(shadowOf(actual)),
           ${assertClass}.class);
   }
+
+#if( !$buildAbstract )
+#set( $rettype = $assertClass )
+#parse( "methods.vm" )
+#end
 }
