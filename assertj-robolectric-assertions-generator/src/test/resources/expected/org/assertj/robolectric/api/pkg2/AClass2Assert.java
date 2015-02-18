@@ -2,7 +2,7 @@ package org.assertj.robolectric.api.pkg2;
 
 import static org.robolectric.Shadows.shadowOf;
 import android.pkg2.AClass2;
-import org.assertj.robolectric.api.pkg2.ShadowAClass2Assert;
+import org.robolectric.shadows.ShadowAClass2Assert;
 
 public class AClass2Assert extends org.assertj.robolectric.api.AbstractRobolectricAssert<
   AClass2Assert,
@@ -26,9 +26,19 @@ public class AClass2Assert extends org.assertj.robolectric.api.AbstractRobolectr
     actualAssert.hasClassProperty(param);
     return this;
   }
+  
+  public AClass2Assert hasFloatProperty(float value, float offset) {
+    actualAssert.hasFloatProperty(value, offset);
+    return this;
+  }
 
-  public AClass2Assert hasShadowProperty(int something) {
+  public AClass2Assert shadowHasShadowProperty(int something) {
     shadowAssert.hasShadowProperty(something);
+    return this;
+  }
+
+  public AClass2Assert shadowHasDoubleProperty(double prop, double offst) {
+    shadowAssert.hasDoubleProperty(prop, offst);
     return this;
   }
 }

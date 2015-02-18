@@ -1,7 +1,6 @@
-package org.assertj.robolectric.api.pkg2;
+package org.robolectric.shadows;
 
 import org.assertj.core.api.AbstractAssert;
-import org.robolectric.shadows.ShadowAClass3;
 
 public class AbstractShadowAClass3Assert<S extends AbstractShadowAClass3Assert<S,A>, A extends ShadowAClass3>
   extends AbstractAssert<S,A>{

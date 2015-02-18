@@ -2,7 +2,7 @@ package org.assertj.robolectric.api.pkg2;
 
 import static org.robolectric.Shadows.shadowOf;
 import android.pkg2.AClass3;
-import org.assertj.robolectric.api.pkg2.ShadowAClass3Assert;
+import org.robolectric.shadows.ShadowAClass3Assert;
 
 public class AClass3Assert extends
   AbstractAClass3Assert<AClass3Assert,

@@ -3,25 +3,38 @@ package org.assertj.robolectric.api;
 public final class Assertions {
 
 #foreach( $m in $methods )
+  #set( $typeParams = $m.getTypeParameters() )
+  #if( $typeParams.size() > 0 )
+    #set( $paramStr = "<" )
+    #set( $paramCount = 0 )
+    #foreach( $p in $typeParams )
+      #if( $paramCount > 0 )#set($paramStr = $paramStr + ',')#end
+      #set( $paramStr = $paramStr + $p )
+      #set( $paramCount = $paramCount + 1 )
+    #end
+    #set( $paramStr = $paramStr + ">" )
+  #else
+    #set( $paramStr = "" )
+  #end
   #set( $actual = $m.getParameters().get(0).asType() )
   #set( $returnType = $m.getReturnType().toString() )
   #set( $shadow = false )
   #set( $shadow = $solids.get($actual) )
   #if( $shadow )
     #set( $roboReturn = $returnType.replace("assertj.android", "assertj.robolectric") )
-    #set( $shadowReturn = $roboReturn.replaceFirst("(api[.].*[.])([^.]*$)", "$1Shadow$2") )
+    #set( $shadowReturn = $shadow + "Assert" )
     #set( $shadowAssert = false )
     #set( $shadowAssert = $elements.getTypeElement($shadowReturn) )
     #if( $shadowAssert )
       #set( $returnType = $roboReturn )
 
-  public static $shadowReturn assertThat($shadow actual) {
+  public static $paramStr $shadowReturn assertThat($shadow actual) {
     return new $shadowReturn(actual);
   }
     #end
   #end
     
-  public static $returnType assertThat($actual actual) {
+  public static $paramStr $returnType assertThat($actual actual) {
     return new $returnType(actual);
   }
 #end

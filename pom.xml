@@ -17,6 +17,8 @@
   <modules>
     <module>assertj-robolectric-assertions-generator</module>
     <module>assertj-robolectric</module>
+    <module>assertj-robolectric-shadows</module>
+    <module>assertj-robolectric-base</module>
   </modules>
 
   <licenses>
@@ -57,6 +59,16 @@
   </dependencies>
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>au.org.stnectarios</groupId>
+        <artifactId>assertj-robolectric-base</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>au.org.stnectarios</groupId>
+        <artifactId>assertj-robolectric-shadows</artifactId>
+        <version>${project.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
@@ -101,49 +113,6 @@
   <build>
     <pluginManagement>
       <plugins>
-       <plugin>
-          <groupId>org.assertj</groupId>
-          <artifactId>assertj-assertions-generator-maven-plugin</artifactId>
-          <version>1.5.0</version>
-          <!-- generate assertions at every build -->
-          <executions>
-            <execution>
-              <goals>
-                <goal>generate-assertions</goal>
-              </goals>
-            </execution>
-          </executions>
-          <configuration>
-            <!-- list the package whose classes you want to generate assertions for -->
-            <packages>
-              <param>org.robolectric.shadows</param>
-            </packages>
-            <!-- whether generated assertions classes can be inherited with consistent assertion chaining -->
-            <hierarchical>true</hierarchical>
-            <!-- base directory where to generate assertions -->
-            <targetDir>target/generated-assertions</targetDir>
-            <!-- select which assertions entry point classes to generate -->
-            <generateAssertions>false</generateAssertions>
-            <generateBddAssertions>false</generateBddAssertions>
-            <generateSoftAssertions>false</generateSoftAssertions>
-            <generateJUnitSoftAssertions>false</generateJUnitSoftAssertions>
-          </configuration>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-eclipse-plugin</artifactId>
-          <version>2.9</version>
-          <configuration>
-            <additionalConfig>
-              <file>
-                <name>.settings/org.eclipse.core.resources.prefs</name>
-                <content>
-                  <![CDATA[eclipse.preferences.version=1${line.separator}encoding/<project>=${project.build.sourceEncoding}${line.separator}]]>
-                </content>
-              </file>
-            </additionalConfig>
-          </configuration>
-        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-clean-plugin</artifactId>
@@ -177,33 +146,27 @@
             <encoding>${project.build.sourceEncoding}</encoding>
           </configuration>
         </plugin>
-        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
         <plugin>
-        	<groupId>org.eclipse.m2e</groupId>
-        	<artifactId>lifecycle-mapping</artifactId>
-        	<version>1.0.0</version>
-        	<configuration>
-        		<lifecycleMappingMetadata>
-        			<pluginExecutions>
-        				<pluginExecution>
-        					<pluginExecutionFilter>
-        						<groupId>org.assertj</groupId>
-        						<artifactId>
-        							assertj-assertions-generator-maven-plugin
-        						</artifactId>
-        						<versionRange>[1.5.0,)</versionRange>
-        						<goals>
-        							<goal>generate-assertions</goal>
-        						</goals>
-        					</pluginExecutionFilter>
-        					<action>
-        						<ignore></ignore>
-        					</action>
-        				</pluginExecution>
-        			</pluginExecutions>
-        		</lifecycleMappingMetadata>
-        	</configuration>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.3.1</version>
         </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>2.4</version>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>2.10.1</version>
+          <configuration>
+            <quiet>true</quiet>
+          </configuration>
+        </plugin>
+        
       </plugins>
     </pluginManagement>
   </build>

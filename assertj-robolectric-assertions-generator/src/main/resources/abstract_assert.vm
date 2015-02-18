@@ -1,7 +1,7 @@
 package $assertPkg;
 import $solidClassFQ;
 import org.assertj.robolectric.api.AbstractRobolectricAssert;
-import $shadowAssertClassFQ;
+import org.robolectric.shadows.$abstractShadowAssertClass;
 import $shadow;
 public abstract class $abstractAssertClass <
   S extends $abstractAssertClass<S,A,AA,SA>,

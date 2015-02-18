@@ -17,6 +17,29 @@
       <artifactId>shadows-core</artifactId>
       <classifier>21</classifier>
     </dependency>
+    <dependency>
+      <groupId>au.org.stnectarios</groupId>
+      <artifactId>assertj-robolectric-base</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.squareup.assertj</groupId>
+      <artifactId>assertj-android</artifactId>
+      <version>1.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>au.org.stnectarios</groupId>
+      <artifactId>assertj-robolectric-assertions-generator</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.robolectric</groupId>
+      <artifactId>android-all</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>au.org.stnectarios</groupId>
+      <artifactId>assertj-robolectric-shadows</artifactId>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -24,6 +47,9 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerArg>-proc:only</compilerArg>
+        </configuration>
       </plugin>
 
       <plugin>
@@ -36,6 +62,32 @@
         <artifactId>maven-javadoc-plugin</artifactId>
       </plugin>
 
+<!--      <plugin>
+        <groupId>org.bsc.maven</groupId>
+        <artifactId>maven-processor-plugin</artifactId>
+        <version>2.2.1</version>
+        <configuration>
+          <outputDirectory>target/generated-sources</outputDirectory>
+          <compilerArguments>-source ${maven.compiler.source} -target ${maven.compiler.target}</compilerArguments>
+          <fork>true</fork>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>process</goal>
+            </goals>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>au.org.stnectarios</groupId>
+            <artifactId>assertj-robolectric-assertions-generator</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+-->
     </plugins>
   </build>
 </project>

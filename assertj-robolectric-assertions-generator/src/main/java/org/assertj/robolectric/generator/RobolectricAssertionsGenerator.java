@@ -2,6 +2,7 @@ package org.assertj.robolectric.generator;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
+import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -20,6 +21,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.SimpleElementVisitor6;
 import javax.lang.model.util.SimpleAnnotationValueVisitor6;
 import javax.lang.model.util.Types;
+import javax.tools.Diagnostic.Kind;
 
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
@@ -50,6 +52,7 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
 
 //  private RobolectricAssertionsModel model;
   private Filer filer;
+  private Messager messager;
   private Elements elements;
   private Types types;
   private TypeElement IMPLEMENTS;
@@ -73,13 +76,17 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
     filer = environment.getFiler();
     elements = environment.getElementUtils();
     types = environment.getTypeUtils();
+    messager = environment.getMessager();
     ve.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath"); 
     ve.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+//    ve.setProperty("runtime.log.logsystem.class", "org.apache.velocity.runtime.log.SystemLogChute");
+    ve.setProperty("runtime.log.logsystem.class", "org.apache.velocity.runtime.log.NullLogSystem");
     ve.init();
     abstractAssertTemplate = ve.getTemplate("abstract_assert.vm");
     assertTemplate = ve.getTemplate("assert.vm");
     assertionsTemplate = ve.getTemplate("assertions.vm");
     IMPLEMENTS = elements.getTypeElement("org.robolectric.annotation.Implements");
+    messager.printMessage(Kind.NOTE, "Initialized RobolectricAssertionsGenerator");
   }
 
 
@@ -165,6 +172,7 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
   }
   
   private void mergeTemplate(Template template, VelocityContext c, String clazz) {
+    messager.printMessage(Kind.MANDATORY_WARNING, "Creating class: " + clazz);
     Writer writer = null;
     try {
       writer = filer.createSourceFile(clazz).openWriter();
@@ -190,9 +198,13 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
       return false;
     }
     List<TypeElement> shadows = typesIn(elements.getPackageElement("org.robolectric.shadows").getEnclosedElements());
+    if (shadows.size() == 0) {
+      messager.printMessage(Kind.ERROR, "Didn't find any shadows!");
+    }
     Map<TypeMirror,TypeElement> solids = new HashMap<>();
     for (TypeElement shadow : shadows) {
       TypeMirror implemented = getImplementedClass(getImplementsMirror(shadow));
+      messager.printMessage(Kind.MANDATORY_WARNING, "Processing shadow: " + shadow);
       if (implemented != null) {
         solids.put(implemented, shadow);
         VelocityContext c = new VelocityContext();
@@ -204,10 +216,11 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
         String assertClassFQ = assertPkg + '.' + assertClass;
 
         String shadowAssertClass = "Shadow" + assertClass;
-        String shadowAssertClassFQ = assertPkg + '.' + shadowAssertClass;
+        String shadowAssertClassFQ = "org.robolectric.shadows." + shadowAssertClass;
         String abstractShadowAssertClass = "Abstract" + shadowAssertClass;
-        String abstractShadowAssertClassFQ = assertPkg + '.' + abstractShadowAssertClass;
+        String abstractShadowAssertClassFQ = "org.robolectric.shadows." + abstractShadowAssertClass;
         TypeElement shadowAssert = elements.getTypeElement(shadowAssertClassFQ);
+        messager.printMessage(Kind.MANDATORY_WARNING, "Processing shadowAssert: " + shadowAssert);
         if (shadowAssert == null) {
           continue;
         }
@@ -217,7 +230,9 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
 
         TypeElement actualAssert = elements.getTypeElement(androidAssertClassFQ);
         if (actualAssert == null) {
-          throw new RuntimeException("Couldn't find actual assert class: " + androidAssertClassFQ);
+          // FIXME: should still create an assertion for the shadow.
+          continue;
+//          throw new RuntimeException("Couldn't find actual assert class: " + androidAssertClassFQ);
         }
         
 
@@ -258,17 +273,19 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
         };
         List<ExecutableElement> methods = new ArrayList<>();
         Iterables.addAll(methods, Iterables.filter(methodsIn(actualAssert.getEnclosedElements()), isPublicInstance));
-        boolean buildAbstract = false;
+        boolean buildAbstract = true;
         if (actualSuper.toString().equals(abstractAndroidAssertClassFQ)) {
           Iterables.addAll(methods, Iterables.filter(methodsIn(actualSuper.getEnclosedElements()), isPublicInstance));
-          buildAbstract = true;
+        } else {
+          buildAbstract = false;
         }
         c.put("actualMethods", methods);
         methods = new ArrayList<>();
         Iterables.addAll(methods, Iterables.filter(methodsIn(shadowAssert.getEnclosedElements()),isPublicInstance));
         if (shadowSuper.toString().equals(abstractShadowAssertClassFQ)) {
           Iterables.addAll(methods, Iterables.filter(methodsIn(shadowSuper.getEnclosedElements()), isPublicInstance));
-          buildAbstract = true;
+        } else {
+          buildAbstract = false;
         }
         c.put("shadowMethods", methods);
         c.put("buildAbstract", buildAbstract);
@@ -276,10 +293,15 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
         if (buildAbstract) {
           mergeTemplate(abstractAssertTemplate, c, abstractAssertClassFQ);
           c.put("assertSuperClass", abstractAssertClass);
-        } else if (actualSuper.toString().equals("org.assertj.core.api.AbstractAssert")) {
-          c.put("assertSuperClass", "org.assertj.robolectric.api.AbstractRobolectricAssert");
         } else {
-          c.put("assertSuperClass", actualSuper.toString().replace("android", "robolectric"));
+          final String actualSuperStr = actualSuper.toString();
+          final String abstractRoboAssert = "org.assertj.robolectric.api.AbstractRobolectricAssert";
+          if (actualSuperStr.equals("org.assertj.core.api.AbstractAssert")) {
+            c.put("assertSuperClass", abstractRoboAssert);
+          } else {
+            final String ourSuperStr = actualSuperStr.replace("android", "robolectric");
+            c.put("assertSuperClass", elements.getTypeElement(ourSuperStr) != null ? ourSuperStr : abstractRoboAssert);
+          }
         }
         mergeTemplate(assertTemplate, c, assertClassFQ);
       }

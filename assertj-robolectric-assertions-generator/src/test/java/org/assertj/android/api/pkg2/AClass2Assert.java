@@ -19,4 +19,8 @@ public class AClass2Assert extends AbstractAssert<AClass2Assert,android.pkg2.ACl
   public AClass2Assert hasClassProperty(UtilClass param) {
     return this;
   }
+  
+  public AClass2Assert hasFloatProperty(float value, float offset) {
+    return this;
+  }
 }

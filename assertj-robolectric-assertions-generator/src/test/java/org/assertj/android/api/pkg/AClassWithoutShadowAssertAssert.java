@@ -2,15 +2,15 @@ package org.assertj.android.api.pkg;
 
 import org.assertj.core.api.AbstractAssert;
 
-public class AClassWithoutShadowAssertAssert
-  extends AbstractAssert<AClassWithoutShadowAssertAssert,
-                         android.pkg.AClassWithoutShadowAssert> {
+public class AClassWithoutShadowAssertAssert<T, V>
+  extends AbstractAssert<AClassWithoutShadowAssertAssert<T,V>,
+                         android.pkg.AClassWithoutShadowAssert<T,V>> {
 
-  public AClassWithoutShadowAssertAssert(android.pkg.AClassWithoutShadowAssert actual) {
+  public AClassWithoutShadowAssertAssert(android.pkg.AClassWithoutShadowAssert<T,V> actual) {
     super(actual, AClassWithoutShadowAssertAssert.class);
   }
   
-  public AClassWithoutShadowAssertAssert hasFloat(int other) {
+  public AClassWithoutShadowAssertAssert<T,V> hasFloat(int other) {
     return this;
   }
 }

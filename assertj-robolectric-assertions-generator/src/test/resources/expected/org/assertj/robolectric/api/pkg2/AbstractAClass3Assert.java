@@ -3,7 +3,7 @@ package org.assertj.robolectric.api.pkg2;
 import android.pkg2.AClass3;
 
 import org.assertj.robolectric.api.AbstractRobolectricAssert;
-import org.assertj.robolectric.api.pkg2.ShadowAClass3Assert;
+import org.robolectric.shadows.AbstractShadowAClass3Assert;
 
 import org.robolectric.shadows.ShadowAClass3;
 
@@ -30,7 +30,7 @@ public abstract class AbstractAClass3Assert<
     return myself;
   }
 
-  public S hasShadowProperty(double somethingElse) {
+  public S shadowHasShadowProperty(double somethingElse) {
     shadowAssert.hasShadowProperty(somethingElse);
     return myself;
   }

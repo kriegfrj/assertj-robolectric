@@ -1,7 +1,6 @@
-package org.assertj.robolectric.api.pkg2;
+package org.robolectric.shadows;
 
 import org.assertj.core.api.AbstractAssert;
-import org.robolectric.shadows.ShadowAClass2;
 
 public class ShadowAClass2Assert
   extends AbstractAssert<ShadowAClass2Assert,ShadowAClass2>{
@@ -11,6 +10,10 @@ public class ShadowAClass2Assert
   }
   
   public ShadowAClass2Assert hasShadowProperty(int something) {
+    return this;
+  }
+
+  public ShadowAClass2Assert hasDoubleProperty(double prop, double offst) {
     return this;
   }
 

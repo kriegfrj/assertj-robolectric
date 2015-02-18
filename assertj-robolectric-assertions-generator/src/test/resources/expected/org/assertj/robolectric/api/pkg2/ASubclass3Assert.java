@@ -3,7 +3,7 @@ package org.assertj.robolectric.api.pkg2;
 import static org.robolectric.Shadows.shadowOf;
 import android.pkg2.ASubclass3;
 
-import org.assertj.robolectric.api.pkg2.ShadowASubclass3Assert;
+import org.robolectric.shadows.ShadowASubclass3Assert;
 
 public class ASubclass3Assert extends org.assertj.robolectric.api.pkg2.AbstractAClass3Assert<
   ASubclass3Assert,
@@ -28,7 +28,7 @@ public class ASubclass3Assert extends org.assertj.robolectric.api.pkg2.AbstractA
     return this;
   }
 
-  public ASubclass3Assert hasSubclassShadowProperty(java.lang.String value) {
+  public ASubclass3Assert shadowHasSubclassShadowProperty(java.lang.String value) {
     shadowAssert.hasSubclassShadowProperty(value);
     return this;
   }
