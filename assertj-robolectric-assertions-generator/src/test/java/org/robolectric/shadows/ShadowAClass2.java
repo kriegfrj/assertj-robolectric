@@ -8,4 +8,11 @@ public class ShadowAClass2 {
   public String getShadowProperty() {
     return "";
   }
+  
+  @Implements(AClass2.AnInnerClass.class)
+  public static class ShadowAnInnerClass {
+    public long getShadowInnerProp() {
+      return 0;
+    }
+  }
 }

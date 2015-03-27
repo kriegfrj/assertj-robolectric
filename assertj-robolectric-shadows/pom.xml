@@ -78,6 +78,10 @@
             <packages>
               <param>org.robolectric.shadows</param>
             </packages>
+            <classes>
+              <param>org.robolectric.shadows.ShadowNotification$ShadowStyle</param>
+              <param>org.robolectric.shadows.ShadowNotification$ShadowBigTextStyle</param>
+            </classes>
             <!-- whether generated assertions classes can be inherited with consistent assertion chaining -->
             <hierarchical>true</hierarchical>
             <!-- base directory where to generate assertions -->

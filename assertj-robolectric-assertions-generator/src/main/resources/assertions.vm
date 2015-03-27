@@ -1,5 +1,7 @@
 package org.assertj.robolectric.api;
 
+import static org.robolectric.Shadows.shadowOf;
+
 public final class Assertions {
 
 #foreach( $m in $methods )
@@ -22,9 +24,10 @@ public final class Assertions {
   #set( $shadow = $solids.get($actual) )
   #if( $shadow )
     #set( $roboReturn = $returnType.replace("assertj.android", "assertj.robolectric") )
-    #set( $shadowReturn = $shadow + "Assert" )
     #set( $shadowAssert = false )
-    #set( $shadowAssert = $elements.getTypeElement($shadowReturn) )
+    // set( $shadowAssert = $shadow + "Assert" )
+    #set( $shadowAssert = $shadowAsMapStrings.get($shadow.toString()) )
+    #set( $shadowReturn = $shadowAssert.toString() )
     #if( $shadowAssert )
       #set( $returnType = $roboReturn )
 
@@ -33,10 +36,21 @@ public final class Assertions {
   }
     #end
   #end
-    
   public static $paramStr $returnType assertThat($actual actual) {
     return new $returnType(actual);
   }
+#end
+#foreach( $solid in $shadowOnly )
+  #set( $shadow = $solids.get($solid) )
+  #set( $shadowAssert = $shadowAsMapStrings.get($shadow.toString()) )
+  public static $shadowAssert assertThat($shadow actual) {
+    return new $shadowAssert(actual);
+  } 
+#if( !$privateSolids.contains($solid) )
+  public static $shadowAssert assertThat($solid actual) {
+    return assertThat(shadowOf(actual));
+  }
+#end
 #end
   
   private Assertions() {

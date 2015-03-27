@@ -1,5 +1,7 @@
 package org.assertj.robolectric.api;
 
+import static org.robolectric.Shadows.shadowOf;
+
 public final class Assertions {
   public static org.assertj.android.api.pkg.AClass1Assert assertThat(
       android.pkg.AClass1 actual) {
@@ -56,6 +58,16 @@ public final class Assertions {
     return new org.assertj.android.api.util.AnInterfaceAssert(actual);
   }
 
+  public static org.robolectric.shadows.ShadowAbstractAnInterfaceAssert assertThat(
+      org.robolectric.shadows.ShadowAbstractAnInterface actual) {
+    return new org.robolectric.shadows.ShadowAbstractAnInterfaceAssert(actual);
+  }
+
+  public static org.assertj.robolectric.api.util.AbstractAnInterface_Assert assertThat(
+      android.util.AbstractAnInterface actual) {
+    return new org.assertj.robolectric.api.util.AbstractAnInterface_Assert(actual);
+  }
+
   public static org.robolectric.shadows.ShadowAnInterfaceImplAssert assertThat(
       org.robolectric.shadows.ShadowAnInterfaceImpl actual) {
     return new org.robolectric.shadows.ShadowAnInterfaceImplAssert(actual);
@@ -64,6 +76,31 @@ public final class Assertions {
   public static org.assertj.robolectric.api.widget.AnInterfaceImplAssert assertThat(
       android.widget.AnInterfaceImpl actual) {
     return new org.assertj.robolectric.api.widget.AnInterfaceImplAssert(actual);
+  }
+
+  public static org.robolectric.shadows.ShadowAClassWithoutAndroidAssertAssert assertThat(
+      org.robolectric.shadows.ShadowAClassWithoutAndroidAssert actual) {
+    return new org.robolectric.shadows.ShadowAClassWithoutAndroidAssertAssert(actual);
+  }
+
+  public static org.robolectric.shadows.ShadowAClassWithoutAndroidAssertAssert assertThat(
+      android.pkg.AClassWithoutAndroidAssert actual) {
+    return assertThat(shadowOf(actual));
+  }
+
+  public static org.robolectric.shadows.ShadowAPrivateClassAssert assertThat(
+      org.robolectric.shadows.ShadowAPrivateClass actual) {
+    return new org.robolectric.shadows.ShadowAPrivateClassAssert(actual);
+  }
+
+  public static org.robolectric.shadows.ShadowAClass2ShadowAnInnerClassAssert assertThat(
+      org.robolectric.shadows.ShadowAClass2.ShadowAnInnerClass actual) {
+    return new org.robolectric.shadows.ShadowAClass2ShadowAnInnerClassAssert(actual);
+  }
+
+  public static org.robolectric.shadows.ShadowAClassWithoutShadowOfAssert assertThat(
+      org.robolectric.shadows.ShadowAClassWithoutShadowOf actual) {
+    return new org.robolectric.shadows.ShadowAClassWithoutShadowOfAssert(actual);
   }
 
   private Assertions() {

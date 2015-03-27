@@ -40,6 +40,11 @@ public final class Assertions {
     return new org.assertj.android.api.util.AnInterfaceAssert(actual);
   }
 
+  public static org.assertj.android.api.util.AbstractAnInterface_Assert assertThat(
+      android.util.AbstractAnInterface actual) {
+    return new org.assertj.android.api.util.AbstractAnInterface_Assert(actual);
+  }
+
   public static org.assertj.android.api.widget.AnInterfaceImplAssert assertThat(
       android.widget.AnInterfaceImpl actual) {
     return new org.assertj.android.api.widget.AnInterfaceImplAssert(actual);

@@ -28,18 +28,27 @@ import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
+import org.omg.CORBA.PRIVATE_MEMBER;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.sun.tools.internal.jxc.gen.config.Classes;
 
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import static javax.lang.model.util.ElementFilter.*;
 
@@ -191,55 +200,145 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
   }
   
   boolean generated = false;
+
+  private Map<TypeMirror,TypeMirror> buildAssertionsMap() {
+    TypeElement assertionsElement = elements.getTypeElement("org.assertj.android.api.Assertions");
+    if (assertionsElement == null) {
+      throw new RuntimeException("Couldn't find org.assertj.android.api.Assertions");
+    }
+    
+    Map<TypeMirror,TypeMirror> map = new HashMap<>();
+    
+    for (ExecutableElement m : methodsIn(assertionsElement.getEnclosedElements())) {
+      if (m.getSimpleName().toString().equals("assertThat")) {
+        map.put(m.getParameters().get(0).asType(), m.getReturnType());
+      }
+    }
+    
+    return map;
+  }
+  
+  private Map<TypeMirror,TypeMirror> buildShadowAssertionsMap() {
+    TypeElement shadowAssertionsElement = elements.getTypeElement("org.robolectric.shadows.Assertions");
+    if (shadowAssertionsElement == null) {
+      throw new RuntimeException("Couldn't find org.robolectric.shadows.Assertions");
+    }
+    
+    Map<TypeMirror,TypeMirror> map = new HashMap<>();
+    
+    for (ExecutableElement m : methodsIn(shadowAssertionsElement.getEnclosedElements())) {
+      if (m.getSimpleName().toString().equals("assertThat")) {
+        map.put(m.getParameters().get(0).asType(), m.getReturnType());
+      }
+    }
+    
+    return map;
+  }
+  
+  private Set<TypeMirror> buildSolidsWithShadowOf() {
+    TypeElement assertionsElement = elements.getTypeElement("org.robolectric.Shadows");
+    if (assertionsElement == null) {
+      throw new RuntimeException("Couldn't find org.robolectric.Shadows");
+    }
+    Set<TypeMirror> set = new HashSet<>();
+    
+    for (ExecutableElement m : methodsIn(assertionsElement.getEnclosedElements())) {
+      if (m.getSimpleName().toString().equals("shadowOf")) {
+        set.add(m.getParameters().get(0).asType());
+      }
+    }
+    
+    return set;
+
+  }
+  
+  private static class CompareTypes implements Comparator<TypeMirror> {
+
+    @Override
+    public int compare(TypeMirror o1, TypeMirror o2) {
+      return o1.toString().compareTo(o2.toString());
+    }
+  }
   
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
     if (generated) {
       return false;
     }
+
+    Map<TypeMirror,TypeMirror> assertionsMap = buildAssertionsMap();
+    Map<TypeMirror,TypeMirror> shadowAssertionsMap = buildShadowAssertionsMap();
+    Set<TypeMirror> solidsWithShadowOf = buildSolidsWithShadowOf();
+    System.err.println("Assertions map: " + assertionsMap);
+    
     List<TypeElement> shadows = typesIn(elements.getPackageElement("org.robolectric.shadows").getEnclosedElements());
     if (shadows.size() == 0) {
       messager.printMessage(Kind.ERROR, "Didn't find any shadows!");
     }
     Map<TypeMirror,TypeElement> solids = new HashMap<>();
-    for (TypeElement shadow : shadows) {
-      TypeMirror implemented = getImplementedClass(getImplementsMirror(shadow));
+    Map<String,TypeMirror> shadowAsMapStrings = new HashMap<>();
+    Set<String> generatedAbstracts = new HashSet<>();
+    Map<String,VelocityContext> classes = new HashMap<>();
+    SortedSet<TypeMirror> shadowOnly = new TreeSet<>(new CompareTypes());
+    Set<TypeMirror> privateSolids = new HashSet<>();
+    for (TypeMirror shadow : shadowAssertionsMap.keySet()) {
+      shadowAsMapStrings.put(shadow.toString(), shadowAssertionsMap.get(shadow));
+      TypeElement shadowElement = (TypeElement)types.asElement(shadow);
+      TypeMirror implemented = getImplementedClass(getImplementsMirror(shadowElement));
       messager.printMessage(Kind.MANDATORY_WARNING, "Processing shadow: " + shadow);
       if (implemented != null) {
-        solids.put(implemented, shadow);
+        solids.put(implemented, shadowElement);
         VelocityContext c = new VelocityContext();
         Element impType = types.asElement(implemented);
         String solidClass = impType.getSimpleName().toString();
         String androidPkg = impType.getEnclosingElement().toString();
-        String assertPkg = androidPkg.replace("android", "org.assertj.robolectric.api");
-        String assertClass = solidClass + "Assert";
-        String assertClassFQ = assertPkg + '.' + assertClass;
+        
+        TypeMirror shadowAssertionType = shadowAssertionsMap.get(shadow);
+        messager.printMessage(Kind.MANDATORY_WARNING, "Processing shadowAssert: " + shadowAssertionType);
+        if (shadowAssertionType == null) {
+          System.err.println("\n====>Pipping class: " + shadowAssertionType + ", " + shadow);
+          continue;
+        }
 
-        String shadowAssertClass = "Shadow" + assertClass;
+        TypeElement shadowAssert = (TypeElement)types.asElement(shadowAssertionType);
+        String shadowAssertClass = shadowElement.getSimpleName() + "Assert";
         String shadowAssertClassFQ = "org.robolectric.shadows." + shadowAssertClass;
         String abstractShadowAssertClass = "Abstract" + shadowAssertClass;
         String abstractShadowAssertClassFQ = "org.robolectric.shadows." + abstractShadowAssertClass;
-        TypeElement shadowAssert = elements.getTypeElement(shadowAssertClassFQ);
-        messager.printMessage(Kind.MANDATORY_WARNING, "Processing shadowAssert: " + shadowAssert);
-        if (shadowAssert == null) {
+        
+        TypeMirror androidAssertionType = assertionsMap.get(implemented);
+        
+        if (androidAssertionType == null) {
+          System.err.println("\n======>Dipping class: " + implemented);
+          shadowOnly.add(implemented);
+//          if (!impType.getModifiers().contains(Modifier.PUBLIC)) {
+          if (!solidsWithShadowOf.contains(implemented)) {
+            privateSolids.add(implemented);
+          }
           continue;
         }
-        String androidAssertPkg = assertPkg.replace("robolectric", "android");
+        
+        Element androidAssertionTypeElement = types.asElement(androidAssertionType);
+        String androidAssertPkg = androidAssertionTypeElement.getEnclosingElement().toString();
+        String assertClass = androidAssertionTypeElement.getSimpleName().toString();
+        String assertPkg = androidAssertPkg.replace("android", "robolectric");
+        String assertClassFQ = assertPkg + '.' + assertClass;
+        
         String androidAssertClassFQ = androidAssertPkg + '.' + assertClass;
         String abstractAndroidAssertClassFQ = androidAssertPkg + ".Abstract" + assertClass;
 
         TypeElement actualAssert = elements.getTypeElement(androidAssertClassFQ);
         if (actualAssert == null) {
+          System.err.println("\n====>Skipping class: " + androidAssertClassFQ);
           // FIXME: should still create an assertion for the shadow.
           continue;
 //          throw new RuntimeException("Couldn't find actual assert class: " + androidAssertClassFQ);
         }
-        
 
         String abstractAssertClass = "Abstract" + assertClass;
         String abstractAssertClassFQ = assertPkg + '.' + abstractAssertClass;
 
-        c.put("shadow", shadow);
+        c.put("shadow", shadowElement);
         c.put("solidClass", solidClass);
         c.put("solidClassFQ", impType);
         c.put("androidPkg", androidPkg);
@@ -290,21 +389,38 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
         c.put("shadowMethods", methods);
         c.put("buildAbstract", buildAbstract);
         
+
+        System.err.println("=================================");
+        TreeSet<Object> keys = new TreeSet<>(Arrays.asList(c.getKeys()));
+        for (Object key : keys) {
+          System.err.println(key + ": " + c.get((String)key));
+        }
         if (buildAbstract) {
           mergeTemplate(abstractAssertTemplate, c, abstractAssertClassFQ);
-          c.put("assertSuperClass", abstractAssertClass);
-        } else {
-          final String actualSuperStr = actualSuper.toString();
-          final String abstractRoboAssert = "org.assertj.robolectric.api.AbstractRobolectricAssert";
-          if (actualSuperStr.equals("org.assertj.core.api.AbstractAssert")) {
-            c.put("assertSuperClass", abstractRoboAssert);
-          } else {
-            final String ourSuperStr = actualSuperStr.replace("android", "robolectric");
-            c.put("assertSuperClass", elements.getTypeElement(ourSuperStr) != null ? ourSuperStr : abstractRoboAssert);
-          }
+          generatedAbstracts.add(abstractAssertClassFQ);
         }
-        mergeTemplate(assertTemplate, c, assertClassFQ);
+        classes.put(assertClassFQ, c);
       }
+    }
+    
+    for (Map.Entry<String,VelocityContext> entry : classes.entrySet()) {
+      String assertClassFQ = entry.getKey();
+      VelocityContext c = entry.getValue();
+      boolean buildAbstract = ((Boolean)c.get("buildAbstract")).booleanValue();
+      Object abstractAssertClass = c.get("abstractAssertClass");
+      if (buildAbstract) {
+        c.put("assertSuperClass", abstractAssertClass);
+      } else {
+        final String actualSuperStr = c.get("actualSuperElement").toString();
+        final String abstractRoboAssert = "org.assertj.robolectric.api.AbstractRobolectricAssert";
+        if (actualSuperStr.equals("org.assertj.core.api.AbstractAssert")) {
+          c.put("assertSuperClass", abstractRoboAssert);
+        } else {
+          final String ourSuperStr = actualSuperStr.replace("android", "robolectric");
+          c.put("assertSuperClass", generatedAbstracts.contains(ourSuperStr) ? ourSuperStr : abstractRoboAssert);
+        }
+      }
+      mergeTemplate(assertTemplate, c, assertClassFQ);
     }
     
     String assertionsClassPackage = "org.assertj.robolectric.api";
@@ -316,12 +432,34 @@ public class RobolectricAssertionsGenerator extends AbstractProcessor {
     }
     
     VelocityContext c = new VelocityContext();
+    System.err.println("Solids: " + solids);
+    System.err.println("Shadow only: " + shadowOnly);
+    System.err.println("Shadow assertions map: " + shadowAssertionsMap);
     c.put("solids", solids);
     c.put("methods", methodsIn(assertionsElement.getEnclosedElements()));
     c.put("elements",  elements);
+    c.put("shadowOnly", shadowOnly);
+    c.put("privateSolids", privateSolids);
+    c.put("shadowAssertionsMap", shadowAssertionsMap);
+    c.put("shadowAsMapStrings", shadowAsMapStrings);
     mergeTemplate(assertionsTemplate, c, assertionsClassName);
-    generated = true;
+    this.generated = true;
     return false;
   }
 
+  public static class Wrapper {
+    Map<TypeMirror, TypeMirror> map;
+    public Wrapper(Map<TypeMirror,TypeMirror> map) {
+      this.map = map;
+    }
+    
+    public TypeMirror get(TypeMirror key) {
+      return map.get(key);
+    }
+
+    @Override
+    public String toString() {
+      return map.toString();
+    }
+  }
 }
